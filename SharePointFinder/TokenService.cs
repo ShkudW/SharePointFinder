@@ -13,7 +13,7 @@ namespace SharePointFinder
 
         public static async Task<string> GetAccessTokenAsync(string refreshToken, string domainName)
         {
-            // קבלת ה-Tenant ID מהדומיין
+            
             string tenantId = await CheckTenantID.GetTenantID(domainName);
 
             if (string.IsNullOrEmpty(tenantId))
@@ -24,7 +24,7 @@ namespace SharePointFinder
                 return null;
             }
 
-            // URL עם ה-Tenant ID שהתקבל
+            
             string url = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
 
             var postData = new Dictionary<string, string>
