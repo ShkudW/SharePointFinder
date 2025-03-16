@@ -64,7 +64,7 @@ namespace SharePointFinder
 
             if (string.IsNullOrEmpty(word) || string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(domainName))
             {
-                Console.WriteLine("Usage: program.exe find /word:\"search_term\" /refreshtoken:\"token\" /domainname:\"yourdomain.com\"");
+                Console.WriteLine("Usage: SharePointFinder.exe find /word:\"search_term\" /refreshtoken:\"token\" /domainname:\"yourdomain.com\"");
                 return;
             }
 
@@ -117,7 +117,7 @@ namespace SharePointFinder
         {
             if (string.IsNullOrEmpty(domainName))
             {
-                Console.WriteLine("Usage: program.exe /domainname:yourdomain.com");
+                Console.WriteLine("Usage: SharePointFinder.exe /domainname:yourdomain.com");
                 return;
             }
 
@@ -141,9 +141,9 @@ namespace SharePointFinder
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("  program.exe devicecodeflow");
-            Console.WriteLine("  program.exe find /word:\"search_term\" /refreshtoken:\"token\" /domainname:\"yourdomain.com\"");
-            Console.WriteLine("  program.exe /domainname:yourdomain.com");
+            Console.WriteLine("  SharePointFinder.exe devicecodeflow");
+            Console.WriteLine("  SharePointFinder.exe find /word:\"search_term\" /refreshtoken:\"token\" /domainname:\"yourdomain.com\"");
+            Console.WriteLine("  SharePointFinder.exe /domainname:yourdomain.com");
         }
     }
 }
