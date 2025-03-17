@@ -19,7 +19,7 @@ SharePointFinder.exe find /word:"Aa123456" /domain:domain.local /refreshtoken:1.
 
 
 Explain:
-! The tool will use the refresh token to request an access token for the webshell.suite.com api.
-! With the webshell.suite.com access token the tool will find the sharepoint domain names (it can be a different domain name than the tenant namd).
-! The tool will use the refresh token to request an access token for the outlook.office365.com API
-! With the outlook.office365.com access token the tool will send a web request (based on json format) that includes the sharepoint domain name and the word you want to search for.
+* The tool will use the refresh token to request an access token for the webshell.suite.com api.
+* With the webshell.suite.com access token the tool will find the sharepoint domain names (it can be a different domain name than the tenant namd).
+* The tool will use the refresh token to request an access token for the outlook.office365.com API
+* With the outlook.office365.com access token the tool will send a web request (based on json format) that includes the sharepoint domain name and the word you want to search for.
